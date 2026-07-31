@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrix Mainframe Stream</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .crt-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            ), linear-gradient(
+                90deg,
+                rgba(255, 0, 0, 0.06),
+                rgba(0, 255, 0, 0.02),
+                rgba(0, 0, 255, 0.06)
+            );
+            background-size: 100% 4px, 6px 100%;
+        }
+
+        #welcome-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 15, 0, 0.95);
+            border: 2px solid #0f0;
+            box-shadow: 0 0 25px rgba(0, 255, 0, 0.5);
+            color: #0f0;
+            padding: 30px;
+            z-index: 10;
+            text-align: center;
+            max-width: 450px;
+            width: 90%;
+            border-radius: 4px;
+        }
+
+        #welcome-popup h2 {
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+            letter-spacing: 2px;
+            text-shadow: 0 0 5px #0f0;
+        }
+
+        #welcome-popup p {
+            margin-bottom: 25px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        #welcome-popup button {
+            background: #000;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 10px 20px;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+        }
+
+        #welcome-popup button:hover {
+            background: #0f0;
+            color: #000;
+            box-shadow: 0 0 15px #0f0;
+        }
+
+        #config-menu {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: rgba(5, 10, 5, 0.96);
+            border: 2px solid #0f0;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.4);
+            color: #0f0;
+            z-index: 5;
+            width: 600px;
+            max-width: 95%;
+            max-height: 90vh;
+            display: none;
+            flex-direction: column;
+            border-radius: 5px;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        #config-menu.active {
+            display: flex;
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        .config-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 30, 0, 0.5);
+        }
+
+        .config-header h2 {
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+            text-shadow: 0 0 5px #0f0;
+        }
+
+        .close-btn {
+            background: none;
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 2px 8px;
+            cursor: pointer;
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        .close-btn:hover {
+            background: #0f0;
+            color: #000;
+        }
+
+        .config-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .config-section {
+            margin-bottom: 20px;
+            border-bottom: 1px dashed rgba(0, 255, 0, 0.3);
+            padding-bottom: 15px;
+        }
+
+        .config-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .config-section h3 {
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+            color: #8ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+        }
+
+        .control-group label {
+            flex: 1;
+        }
+
+        .control-group input[type="color"] {
+            background: none;
+            border: 1px solid #0f0;
+            width: 40px;
+            height: 25px;
+            cursor: pointer;
+        }
+
+        .control-group input[type="range"] {
+            flex: 1;
+            margin-left: 15px;
+            accent-color: #0f0;
+            background: #000;
+        }
+
+        .control-group select {
+            background: #000;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 3px 6px;
+            font-family: 'Courier New', Courier, monospace;
+            outline: none;
+        }
+
+        .control-group input[type="checkbox"] {
+            accent-color: #0f0;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .config-footer {
+            padding: 12px 20px;
+            border-top: 1px solid #0f0;
+            text-align: right;
+            background: rgba(0, 30, 0, 0.5);
+            font-size: 0.75rem;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="welcome-popup">
+        <h2>Hey there!</h2>
+        <p>Welcome to the digital rain display.<br><br>Feel free to press <strong>Ctrl + B</strong> if you're on Windows, or <strong>Command + B</strong> if you're on a Mac, whenever you want to open up the settings and tweak things.</p>
+        <button id="dismiss-popup">Let's Dive In</button>
+    </div>
+
+    <div id="config-menu">
+        <div class="config-header">
+            <h2>Customize Your View</h2>
+            <button class="close-btn" id="close-config">[X]</button>
+        </div>
+        <div class="config-body">
+            <div class="config-section">
+                <h3>Colors & Palette</h3>
+                <div class="control-group">
+                    <label for="trail-color">Front Letter Color:</label>
+                    <input type="color" id="trail-color" value="#ffffff">
+                </div>
+                <div class="control-group">
+                    <label for="base-color">Falling Stream Color:</label>
+                    <input type="color" id="base-color" value="#00ff66">
+                </div>
+                <div class="control-group">
+                    <label for="bg-color">Background Fade Speed:</label>
+                    <input type="range" id="bg-color" min="0.01" max="0.30" step="0.01" value="0.08">
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h3>Flow & Style</h3>
+                <div class="control-group">
+                    <label for="font-size">Letter Size:</label>
+                    <input type="range" id="font-size" min="10" max="32" step="2" value="16">
+                </div>
+                <div class="control-group">
+                    <label for="stream-speed">Falling Speed:</label>
+                    <input type="range" id="stream-speed" min="0.5" max="3.0" step="0.1" value="1.0">
+                </div>
+                <div class="control-group">
+                    <label for="charset-select">Character Style:</label>
+                    <select id="charset-select">
+                        <option value="matrix">Classic Matrix Glyphs</option>
+                        <option value="binary">Binary Numbers Only</option>
+                        <option value="hex">Hex Code Letters</option>
+                        <option value="cyber">Cool Symbols & Punctuators</option>
+                        <option value="runes">Ancient Runes</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h3>Display Extras</h3>
+                <div class="control-group">
+                    <label for="crt-toggle">CRT TV Screen Lines:</label>
+                    <input type="checkbox" id="crt-toggle" checked>
+                </div>
+                <div class="control-group">
+                    <label for="glow-toggle">Soft Glow Effect:</label>
+                    <input type="checkbox" id="glow-toggle" checked>
+                </div>
+                <div class="control-group">
+                    <label for="density-slider">Rain Density:</label>
+                    <input type="range" id="density-slider" min="0.5" max="2.0" step="0.1" value="1.0">
+                </div>
+            </div>
+        </div>
+        <div class="config-footer">
+            Made to look awesome on your screen.
+        </div>
+    </div>
+
+    <div class="crt-overlay" id="crt-layer"></div>
+
+    <canvas id="matrix-canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('matrix-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initDrops();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        const config = {
+            leadColor: '#ffffff',
+            streamColor: '#00ff66',
+            bgAlpha: 0.08,
+            fontSize: 16,
+            speedMultiplier: 1.0,
+            charset: 'matrix',
+            crtEnabled: true,
+            glowEnabled: true,
+            density: 1.0
+        };
+
+        const charsets = {
+            matrix: 'ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍｦｲｸｺｿﾁﾄﾅﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍｦ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+            binary: '01',
+            hex: '0123456789ABCDEF',
+            cyber: '!@#$%^&*()_+-=[]{}|;:,.<>/?~`§±',
+            runes: 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛋᛏᛒᛖᛗᛚᛜᛞᛟ0123456789'
+        };
+
+        let drops = [];
+        let dropSpeeds = [];
+
+        function initDrops() {
+            const columns = Math.floor((canvas.width / config.fontSize) * config.density);
+            drops = [];
+            dropSpeeds = [];
+            for (let i = 0; i < columns; i++) {
+                drops[i] = Math.floor(Math.random() * -100);
+                dropSpeeds[i] = (Math.random() * 0.5 + 0.8);
+            }
+        }
+
+        initDrops();
+
+        function draw() {
+            ctx.fillStyle = `rgba(0, 0, 0, ${config.bgAlpha})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.font = `${config.fontSize}px 'Courier New', monospace`;
+
+            const characters = charsets[config.charset];
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = characters.charAt(Math.floor(Math.random() * characters.length));
+                
+                const x = i * (config.fontSize / config.density);
+                const y = drops[i] * config.fontSize;
+
+                ctx.fillStyle = config.leadColor;
+                if (config.glowEnabled) {
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = config.streamColor;
+                } else {
+                    ctx.shadowBlur = 0;
+                }
+                ctx.fillText(text, x, y);
+
+                ctx.fillStyle = config.streamColor;
+                ctx.fillText(text, x, y - config.fontSize);
+
+                if (y > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                    dropSpeeds[i] = (Math.random() * 0.5 + 0.8);
+                }
+
+                drops[i] += dropSpeeds[i] * config.speedMultiplier;
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        requestAnimationFrame(draw);
+
+        const welcomePopup = document.getElementById('welcome-popup');
+        const dismissBtn = document.getElementById('dismiss-popup');
+        const configMenu = document.getElementById('config-menu');
+        const closeConfigBtn = document.getElementById('close-config');
+        const crtLayer = document.getElementById('crt-layer');
+
+        dismissBtn.addEventListener('click', () => {
+            welcomePopup.style.display = 'none';
+        });
+
+        closeConfigBtn.addEventListener('click', () => {
+            configMenu.classList.remove('active');
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+                e.preventDefault();
+                configMenu.classList.toggle('active');
+                if (welcomePopup.style.display !== 'none') {
+                    welcomePopup.style.display = 'none';
+                }
+            }
+        });
+
+        document.getElementById('trail-color').addEventListener('input', (e) => {
+            config.leadColor = e.target.value;
+        });
+
+        document.getElementById('base-color').addEventListener('input', (e) => {
+            config.streamColor = e.target.value;
+        });
+
+        document.getElementById('bg-color').addEventListener('input', (e) => {
+            config.bgAlpha = parseFloat(e.target.value);
+        });
+
+        document.getElementById('font-size').addEventListener('input', (e) => {
+            config.fontSize = parseInt(e.target.value);
+            initDrops();
+        });
+
+        document.getElementById('stream-speed').addEventListener('input', (e) => {
+            config.speedMultiplier = parseFloat(e.target.value);
+        });
+
+        document.getElementById('charset-select').addEventListener('change', (e) => {
+            config.charset = e.target.value;
+        });
+
+        document.getElementById('crt-toggle').addEventListener('change', (e) => {
+            crtLayer.style.display = e.target.checked ? 'block' : 'none';
+        });
+
+        document.getElementById('glow-toggle').addEventListener('change', (e) => {
+            config.glowEnabled = e.target.checked;
+        });
+
+        document.getElementById('density-slider').addEventListener('input', (e) => {
+            config.density = parseFloat(e.target.value);
+            initDrops();
+        });
+    </script>
+</body>
+</html>
